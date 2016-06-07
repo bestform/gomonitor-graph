@@ -19,7 +19,7 @@ type dumper struct {
 	imgFile         *os.File
 }
 
-func NewDumper(name string, n, m, w, h int) *dumper {
+func newDumper(name string, n, m, w, h int) *dumper {
 	var err error
 	dumper := dumper{N: n, M: m, W: w, H: h}
 

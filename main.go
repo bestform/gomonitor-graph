@@ -41,7 +41,7 @@ func main() {
 }
 
 func plotData(data MonitorData) {
-	dumper := NewDumper(data.Title, 1, 1, 800, 800)
+	dumper := newDumper(data.Title, 1, 1, 800, 800)
 	defer dumper.Close()
 
 	c := chart.ScatterChart{}
