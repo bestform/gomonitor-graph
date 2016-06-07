@@ -15,6 +15,36 @@ func TestEmptyStringParse(t *testing.T) {
 	}
 }
 
+func TestCases(t *testing.T) {
+	cases := []struct {
+		Input, Name, ExpectedTitle string
+		ExpectedValues             []string
+	}{
+		{"foo: bar", "foo", "foo", []string{"bar"}},
+	}
+
+	for _, c := range cases {
+		p := SimpleParser{}
+		parsedData, err := p.parse(c.Name, strings.NewReader(c.Input))
+		if err != nil {
+			t.Errorf("an error occured when parsing '%s': %s", c.Input, err)
+		}
+		if parsedData.Title != c.ExpectedTitle {
+			t.Errorf("Expected title: %s, but got: %s", c.ExpectedTitle, parsedData.Title)
+		}
+		if len(parsedData.Values) != len(c.ExpectedValues) {
+			t.Errorf("Expected values: %v, but got: %v", c.ExpectedValues, parsedData.Values)
+		} else {
+			for i := range parsedData.Values {
+				if parsedData.Values[i] != c.ExpectedValues[i] {
+					t.Errorf("Expected values: %v, but got: %v", c.ExpectedValues, parsedData.Values)
+				}
+			}
+		}
+
+	}
+}
+
 func TestSimpleEntry(t *testing.T) {
 	data := "foo: bar"
 	p := SimpleParser{}
