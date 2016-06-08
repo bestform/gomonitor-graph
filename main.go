@@ -37,6 +37,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if len(data.Values) == 0 {
+		log.Println("No values found")
+		return
+	}
 	plotData(data)
 }
 
