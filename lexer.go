@@ -17,7 +17,9 @@ const (
 	itemError
 )
 
-const eof = -1
+const (
+	eof = -1
+)
 
 type item struct {
 	typ     itemType
@@ -104,6 +106,20 @@ func (l *lexer) peek() rune {
 	return r
 }
 
+func (l *lexer) seek(valid string) bool {
+	startPos := l.pos
+	for {
+		n := l.next()
+		if strings.IndexRune(valid, n) >= 0 {
+			return true
+		}
+		if n == eof {
+			l.pos = startPos
+			return false
+		}
+	}
+}
+
 func (l *lexer) ignore() {
 	l.start = l.pos
 }
@@ -124,23 +140,30 @@ func (l *lexer) acceptRun(valid string) {
 }
 
 func stateFnText(l *lexer) stateFn {
-	for {
-		n := l.next()
-		if n == eof {
+	if l.seek(":\n") {
+		l.backup()
+		if l.pos != l.start {
 			l.emit(itemString)
-			return stateFnEOF
 		}
-		if r, _ := utf8.DecodeRuneInString(":"); r == n {
+		n := l.next()
+		colon, _ := utf8.DecodeRuneInString(":")
+		if n == colon {
 			l.backup()
-			l.emit(itemString)
 			return stateFnDivider
 		}
-		if r, _ := utf8.DecodeRuneInString("\n"); r == n {
+		newline, _ := utf8.DecodeRuneInString("\n")
+		if n == newline {
 			l.backup()
-			l.emit(itemString)
 			return stateFnNewLine
 		}
 	}
+	l.pos = pos(len(l.input))
+
+	if l.pos != l.start {
+		l.emit(itemString)
+	}
+
+	return stateFnEOF
 }
 
 func stateFnEOF(l *lexer) stateFn {
@@ -153,7 +176,6 @@ func stateFnEOF(l *lexer) stateFn {
 func stateFnDivider(l *lexer) stateFn {
 	l.next()
 	l.emit(itemDivider)
-	l.next()
 
 	return stateFnText(l)
 }
@@ -161,7 +183,5 @@ func stateFnDivider(l *lexer) stateFn {
 func stateFnNewLine(l *lexer) stateFn {
 	l.next()
 	l.emit(itemNewLine)
-	l.next()
-
 	return stateFnText(l)
 }

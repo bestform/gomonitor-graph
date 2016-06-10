@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -46,6 +47,73 @@ func (s SimpleParser) parse(name string, r io.Reader) (MonitorData, error) {
 		}
 		lineData := strings.TrimPrefix(line, name+": ")
 		parsedData.Values = append(parsedData.Values, lineData)
+	}
+
+	return parsedData, nil
+}
+
+type state int
+
+const (
+	stateName state = iota
+	stateValue
+	stateDivider
+	stateIgnoreLine
+)
+
+type LexParser struct{}
+
+func (p LexParser) parse(name string, r io.Reader) (MonitorData, error) {
+	var parsedData MonitorData
+
+	rawdata, err := ioutil.ReadAll(r)
+
+	if err != nil {
+		return parsedData, err
+	}
+
+	l, c := NewLexer(string(rawdata))
+
+	go l.Lex()
+
+	// do the parsey parse
+	parsedData.Title = name
+	currentState := stateName
+
+	for item := range c {
+		switch currentState {
+
+		case stateName:
+			if item.typ == itemNewLine {
+				continue
+			}
+			if item.typ == itemString && item.content == name {
+				currentState = stateDivider
+				continue
+			} else {
+				currentState = stateIgnoreLine
+				continue
+			}
+
+		case stateDivider:
+			if item.typ != itemDivider {
+				return parsedData, fmt.Errorf("Expected Divider")
+			}
+			currentState = stateValue
+			continue
+
+		case stateValue:
+			parsedData.Values = append(parsedData.Values, strings.TrimSpace(item.content))
+			currentState = stateIgnoreLine
+			continue
+
+		case stateIgnoreLine:
+			if item.typ == itemNewLine {
+				currentState = stateName
+				continue
+			}
+			continue
+		}
 	}
 
 	return parsedData, nil

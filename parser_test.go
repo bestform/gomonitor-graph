@@ -28,7 +28,7 @@ func TestCases(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		p := SimpleParser{}
+		p := LexParser{}
 		parsedData, err := p.parse(c.Name, strings.NewReader(c.Input))
 		if err != nil {
 			t.Errorf("an error occured when parsing '%s': %s", c.Input, err)
