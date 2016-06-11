@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"strings"
 )
 
@@ -78,43 +79,44 @@ func (p LexParser) parse(name string, r io.Reader) (MonitorData, error) {
 
 	// do the parsey parse
 	parsedData.Title = name
-	currentState := stateName
-
-	for item := range c {
-		switch currentState {
-
-		case stateName:
-			if item.typ == itemNewLine {
-				continue
-			}
-			if item.typ == itemString && item.content == name {
-				currentState = stateDivider
-				continue
-			} else {
-				currentState = stateIgnoreLine
-				continue
-			}
-
-		case stateDivider:
-			if item.typ != itemDivider {
-				return parsedData, fmt.Errorf("Expected Divider")
-			}
-			currentState = stateValue
-			continue
-
-		case stateValue:
-			parsedData.Values = append(parsedData.Values, strings.TrimSpace(item.content))
-			currentState = stateIgnoreLine
-			continue
-
-		case stateIgnoreLine:
-			if item.typ == itemNewLine {
-				currentState = stateName
-				continue
-			}
-			continue
+	f := parseName
+	for i := range c {
+		f, err = f(i, &parsedData)
+		if err != nil {
+			log.Fatal("error while parsing input")
 		}
 	}
 
 	return parsedData, nil
+}
+
+type parseFn func(item, *MonitorData) (parseFn, error)
+
+func parseName(i item, d *MonitorData) (parseFn, error) {
+	if i.typ == itemNewLine {
+		return parseName, nil
+	}
+	if i.typ == itemString && i.content == d.Title { // todo: this is ugly. We should carry the name separatly
+		return parseDivider, nil
+	}
+	return parseIgnoreLine, nil
+}
+
+func parseDivider(i item, d *MonitorData) (parseFn, error) {
+	if i.typ != itemDivider {
+		return nil, fmt.Errorf("Expected Divider")
+	}
+	return parseValue, nil
+}
+
+func parseValue(i item, d *MonitorData) (parseFn, error) {
+	d.Values = append(d.Values, strings.TrimSpace(i.content))
+	return parseIgnoreLine, nil
+}
+
+func parseIgnoreLine(i item, d *MonitorData) (parseFn, error) {
+	if i.typ == itemNewLine {
+		return parseName, nil
+	}
+	return parseIgnoreLine, nil
 }
